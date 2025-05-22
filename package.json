@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@deepgram/sdk": "^4.2.0",
     "@types/firebase": "^2.4.32",
     "firebase": "^11.8.1",
     "framer-motion": "^12.12.1",
