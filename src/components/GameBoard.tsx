@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface GameBoardProps {
   role: 'giver' | 'guesser';
@@ -20,6 +20,45 @@ export default function GameBoard({ role }: GameBoardProps) {
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [editWord, setEditWord] = useState('');
   const [editColor, setEditColor] = useState<CardType['color']>('white');
+  const [timerState, setTimerState] = useState<'idle' | 'running' | 'paused' | 'done'>('idle');
+  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes in seconds
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (timerState === 'running') {
+      if (timeLeft > 0) {
+        timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      } else {
+        setTimerState('done');
+      }
+    } else if (timerState === 'paused' || timerState === 'idle' || timerState === 'done') {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [timerState, timeLeft]);
+
+  const startTimer = () => {
+    setTimeLeft(120);
+    setTimerState('running');
+  };
+  const pauseTimer = () => setTimerState('paused');
+  const resumeTimer = () => setTimerState('running');
+  const cancelTimer = () => {
+    setTimerState('idle');
+    setTimeLeft(120);
+  };
+  const resetTimer = () => {
+    setTimerState('idle');
+    setTimeLeft(120);
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   const handleColorCycle = (index: number) => {
     setCards(currentCards => {
@@ -188,6 +227,59 @@ export default function GameBoard({ role }: GameBoardProps) {
           placeholder="Write your clues and notes here..."
           className="w-full h-32 p-3 border-2 rounded-lg focus:outline-none focus:border-blue-500 resize-none text-black"
         />
+      </div>
+
+      {/* Countdown Timer UI */}
+      <div className="mt-2 flex flex-col items-center">
+        {timerState === 'idle' && (
+          <button
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+            onClick={startTimer}
+          >
+            Start a 2 minute countdown
+          </button>
+        )}
+        {timerState === 'running' && (
+          <>
+            <div className="text-3xl font-mono mb-2">{formatTime(timeLeft)}</div>
+            <div className="flex gap-2">
+              <button
+                className="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600"
+                onClick={pauseTimer}
+              >Pause</button>
+              <button
+                className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400"
+                onClick={cancelTimer}
+              >Cancel</button>
+            </div>
+          </>
+        )}
+        {timerState === 'paused' && (
+          <>
+            <div className="text-3xl font-mono mb-2">{formatTime(timeLeft)}</div>
+            <div className="flex gap-2">
+              <button
+                className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700"
+                onClick={resumeTimer}
+              >Resume</button>
+              <button
+                className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400"
+                onClick={cancelTimer}
+              >Cancel</button>
+            </div>
+          </>
+        )}
+        {timerState === 'done' && (
+          <div className="flex flex-col items-center gap-2">
+            <div className="text-2xl font-bold text-red-600">Time's Up!</div>
+            <button
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+              onClick={resetTimer}
+            >
+              Start a 2 minute countdown
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
