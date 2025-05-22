@@ -271,7 +271,7 @@ export default function GameBoard({ role }: GameBoardProps) {
         )}
         {timerState === 'done' && (
           <div className="flex flex-col items-center gap-2">
-            <div className="text-2xl font-bold text-red-600">Time's Up!</div>
+            <div className="text-2xl font-bold text-red-600">Time&apos;s Up!</div>
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
               onClick={resetTimer}
