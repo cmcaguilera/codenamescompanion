@@ -81,8 +81,9 @@ export default function GameBoard({ role }: GameBoardProps) {
             key={index}
             onClick={() => openCardEditor(index)}
             className={`
-              aspect-[4/3] p-2 rounded-lg border-2 cursor-pointer
+              aspect-[4/3] rounded-lg border-2 cursor-pointer
               flex items-center justify-center text-center
+              p-1 sm:p-2
               ${card.color === 'red' ? 'bg-red-500 hover:bg-red-600' :
                 card.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
                 card.color === 'black' ? 'bg-black hover:bg-gray-900' :
@@ -90,13 +91,33 @@ export default function GameBoard({ role }: GameBoardProps) {
                 'bg-white hover:bg-gray-100'
               }
               transition-colors duration-200
+              w-full
+              min-h-[60px] min-w-[60px]
+              sm:min-h-[80px] sm:min-w-[80px]
+              md:min-h-[90px] md:min-w-[90px]
+              lg:min-h-[100px] lg:min-w-[100px]
             `}
+            style={{
+              // Make cards bigger on mobile
+              height: 'clamp(60px, 18vw, 120px)',
+              width: 'clamp(60px, 18vw, 120px)',
+              paddingLeft: '0.25rem',
+              paddingRight: '0.25rem',
+            }}
           >
             <span
-              className={`w-full text-center font-medium select-none
+              className={`w-full text-center font-medium select-none truncate leading-tight
                 ${card.color === 'black' || card.color === 'blue' || card.color === 'red' ? 'text-white' : 'text-black'}
               `}
-              style={{ pointerEvents: 'none' }}
+              style={{
+                fontSize: 'clamp(0.8rem, 4vw, 1.2rem)',
+                wordBreak: 'break-word',
+                whiteSpace: 'pre-line',
+                lineHeight: 1.1,
+                display: 'block',
+                maxWidth: '100%',
+                overflowWrap: 'break-word',
+              }}
             >
               {card.word || <span className="opacity-40">Tap to edit</span>}
             </span>
