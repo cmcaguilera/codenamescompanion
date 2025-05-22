@@ -73,15 +73,15 @@ export default function GameBoard({ role }: GameBoardProps) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
+    <div className="w-full max-w-4xl mx-auto px-1 sm:px-4 pt-4">
       <h2 className="text-xl font-semibold mb-4">You are the {role}</h2>
-      <div className="grid grid-cols-5 gap-2 mb-6">
+      <div className="grid grid-cols-5 gap-[2px] sm:gap-2 mb-6">
         {cards.map((card, index) => (
           <div
             key={index}
             onClick={() => openCardEditor(index)}
             className={`
-              aspect-[4/3] rounded-lg border-2 cursor-pointer
+              aspect-square rounded-lg border-2 cursor-pointer
               flex items-center justify-center text-center
               p-1 sm:p-2
               ${card.color === 'red' ? 'bg-red-500 hover:bg-red-600' :
@@ -98,7 +98,6 @@ export default function GameBoard({ role }: GameBoardProps) {
               lg:min-h-[100px] lg:min-w-[100px]
             `}
             style={{
-              // Make cards bigger on mobile
               height: 'clamp(60px, 18vw, 120px)',
               width: 'clamp(60px, 18vw, 120px)',
               paddingLeft: '0.25rem',
@@ -181,16 +180,15 @@ export default function GameBoard({ role }: GameBoardProps) {
         </div>
       )}
 
-      {role === 'giver' && (
-        <div className="mt-4">
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Write your clues and notes here..."
-            className="w-full h-32 p-3 border-2 rounded-lg focus:outline-none focus:border-blue-500 resize-none text-black"
-          />
-        </div>
-      )}
+      {/* Show notes textarea for both roles */}
+      <div className="mt-4">
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Write your clues and notes here..."
+          className="w-full h-32 p-3 border-2 rounded-lg focus:outline-none focus:border-blue-500 resize-none text-black"
+        />
+      </div>
     </div>
   )
 } 
