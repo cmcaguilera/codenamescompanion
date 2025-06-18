@@ -1,9 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { db } from '../firebase/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, Firestore } from 'firebase/firestore';
 
 type CardType = {
   word: string;
@@ -18,6 +18,7 @@ interface GameBoardContextType {
   resetBoard: () => void;
   shareBoard: () => Promise<string>;
   boardId: string | null;
+  loadBoardFromId: (id: string) => Promise<void>;
 }
 
 const GameBoardContext = createContext<GameBoardContextType | undefined>(undefined);
@@ -26,43 +27,37 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
   const [cards, setCards] = useState<CardType[]>(Array(25).fill({ word: '', color: 'white' }));
   const [notes, setNotes] = useState('');
   const [boardId, setBoardId] = useState<string | null>(null);
-  const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Load board from URL if it exists
-  useEffect(() => {
-    const loadBoard = async () => {
-      const id = searchParams.get('board');
-      if (id) {
-        try {
-          const boardDoc = await getDoc(doc(db, 'boards', id));
-          if (boardDoc.exists()) {
-            const data = boardDoc.data();
-            setCards(data.cards);
-            setNotes(data.notes);
-            setBoardId(id);
-          }
-        } catch (error) {
-          console.error('Error loading board:', error);
-        }
+  const loadBoardFromId = async (id: string) => {
+    if (!db) return; // Skip if Firebase is not initialized
+    
+    try {
+      const boardDoc = await getDoc(doc(db as Firestore, 'boards', id));
+      if (boardDoc.exists()) {
+        const data = boardDoc.data();
+        setCards(data.cards);
+        setNotes(data.notes);
+        setBoardId(id);
       }
-    };
-    loadBoard();
-  }, [searchParams]);
+    } catch (error) {
+      console.error('Error loading board:', error);
+    }
+  };
 
   // Save board changes to Firestore
   useEffect(() => {
     const saveBoard = async () => {
-      if (boardId) {
-        try {
-          await setDoc(doc(db, 'boards', boardId), {
-            cards,
-            notes,
-            updatedAt: new Date().toISOString(),
-          });
-        } catch (error) {
-          console.error('Error saving board:', error);
-        }
+      if (!db || !boardId) return; // Skip if Firebase is not initialized or no boardId
+      
+      try {
+        await setDoc(doc(db as Firestore, 'boards', boardId), {
+          cards,
+          notes,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error('Error saving board:', error);
       }
     };
     saveBoard();
@@ -76,11 +71,15 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
   };
 
   const shareBoard = async () => {
+    if (!db) {
+      throw new Error('Firebase is not initialized');
+    }
+
     try {
       // If no boardId exists, create a new one
       if (!boardId) {
         const newBoardId = Math.random().toString(36).substring(2, 15);
-        await setDoc(doc(db, 'boards', newBoardId), {
+        await setDoc(doc(db as Firestore, 'boards', newBoardId), {
           cards,
           notes,
           createdAt: new Date().toISOString(),
@@ -106,6 +105,7 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
         resetBoard,
         shareBoard,
         boardId,
+        loadBoardFromId,
       }}
     >
       {children}
