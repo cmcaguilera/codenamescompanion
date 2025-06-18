@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '../firebase/firebase';
 import { doc, setDoc, getDoc, Firestore } from 'firebase/firestore';
 
@@ -16,7 +16,7 @@ interface GameBoardContextType {
   notes: string;
   setNotes: Dispatch<SetStateAction<string>>;
   resetBoard: () => void;
-  shareBoard: () => Promise<string>;
+  shareBoard: () => Promise<void>;
   boardId: string | null;
   loadBoardFromId: (id: string) => Promise<void>;
 }
@@ -28,6 +28,15 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState('');
   const [boardId, setBoardId] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Load board from URL parameter on mount
+  useEffect(() => {
+    const boardParam = searchParams.get('board');
+    if (boardParam) {
+      loadBoardFromId(boardParam);
+    }
+  }, [searchParams]);
 
   const loadBoardFromId = async (id: string) => {
     if (!db) return; // Skip if Firebase is not initialized
@@ -86,12 +95,22 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date().toISOString(),
         });
         setBoardId(newBoardId);
-        return `${window.location.origin}?board=${newBoardId}`;
       }
-      return `${window.location.origin}?board=${boardId}`;
+
+      // Create the share URL
+      const shareUrl = `${window.location.origin}?board=${boardId}`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(shareUrl);
+      
+      // Update URL without reloading
+      router.push(`?board=${boardId}`, { scroll: false });
+      
+      // Show success message
+      alert('Board URL copied to clipboard!');
     } catch (error) {
       console.error('Error sharing board:', error);
-      throw error;
+      alert('Failed to share board. Please try again.');
     }
   };
 
