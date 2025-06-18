@@ -14,8 +14,14 @@ export default function Home() {
     const boardParam = params.get('board')
     if (boardParam) {
       setRole('giver') // If there's a board ID, default to giver role
+      console.log('Loading board:', boardParam)
     }
   }, [])
+
+  const handleRoleSelect = (selectedRole: 'giver' | 'guesser') => {
+    setRole(selectedRole)
+    console.log('Role selected:', selectedRole)
+  }
 
   if (role === null) {
     return (
@@ -24,13 +30,13 @@ export default function Home() {
           <h1 className="text-2xl font-bold mb-6 text-center">Select Your Role</h1>
           <div className="space-y-4">
             <button
-              onClick={() => setRole('giver')}
+              onClick={() => handleRoleSelect('giver')}
               className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition"
             >
               I am the Giver
             </button>
             <button
-              onClick={() => setRole('guesser')}
+              onClick={() => handleRoleSelect('guesser')}
               className="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition"
             >
               I am the Guesser
