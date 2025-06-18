@@ -25,4 +25,12 @@ if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
   storage = getStorage(app);
 }
 
+// Create a function to get the initialized instances
+export function getFirebaseInstances() {
+  if (!auth || !db || !storage) {
+    throw new Error('Firebase is not initialized');
+  }
+  return { auth, db, storage };
+}
+
 export { app, auth, db, storage };
