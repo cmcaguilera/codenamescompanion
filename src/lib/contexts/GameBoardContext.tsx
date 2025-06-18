@@ -94,17 +94,20 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
   };
 
   const shareBoard = async () => {
+    console.log('shareBoard function called');
     if (!db) {
-      console.error('Firebase is not initialized');
+      console.error('Firebase is not initialized - db is null');
       return;
     }
 
     try {
       let currentBoardId = boardId;
+      console.log('Current boardId:', currentBoardId);
 
       // If no boardId exists, create a new one
       if (!currentBoardId) {
         currentBoardId = Math.random().toString(36).substring(2, 15);
+        console.log('Created new boardId:', currentBoardId);
         await setDoc(doc(db as Firestore, 'boards', currentBoardId), {
           cards,
           notes,
@@ -112,17 +115,20 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date().toISOString(),
         });
         setBoardId(currentBoardId);
-        console.log('New board created:', currentBoardId);
+        console.log('New board saved to Firebase');
       }
 
       // Create the share URL
       const shareUrl = `${window.location.origin}?board=${currentBoardId}`;
+      console.log('Share URL created:', shareUrl);
       
       // Copy to clipboard
       await navigator.clipboard.writeText(shareUrl);
+      console.log('URL copied to clipboard');
       
       // Update URL without reloading
       router.push(`?board=${currentBoardId}`, { scroll: false });
+      console.log('URL updated in browser');
       
       // Show success message
       alert('Board URL copied to clipboard!');

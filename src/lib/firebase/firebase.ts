@@ -19,10 +19,24 @@ let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 
 if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
+  console.log('Initializing Firebase with config:', {
+    apiKey: firebaseConfig.apiKey ? 'present' : 'missing',
+    authDomain: firebaseConfig.authDomain ? 'present' : 'missing',
+    projectId: firebaseConfig.projectId ? 'present' : 'missing',
+    storageBucket: firebaseConfig.storageBucket ? 'present' : 'missing',
+    messagingSenderId: firebaseConfig.messagingSenderId ? 'present' : 'missing',
+    appId: firebaseConfig.appId ? 'present' : 'missing',
+  });
   app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+  console.log('Firebase initialized successfully');
+} else {
+  console.error('Firebase initialization failed:', {
+    isWindow: typeof window !== 'undefined',
+    hasApiKey: !!firebaseConfig.apiKey,
+  });
 }
 
 // Create a function to get the initialized instances

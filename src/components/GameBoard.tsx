@@ -111,9 +111,13 @@ export default function GameBoard({ role }: GameBoardProps) {
   };
 
   const handleShare = async () => {
+    console.log('Share button clicked');
     try {
+      console.log('Calling shareBoard function');
       await shareBoard();
+      console.log('shareBoard completed successfully');
       setShowShareModal(true);
+      console.log('Share modal shown');
     } catch (error) {
       console.error('Error sharing board:', error);
     }
