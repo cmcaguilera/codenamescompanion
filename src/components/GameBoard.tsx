@@ -110,10 +110,9 @@ export default function GameBoard({ role }: GameBoardProps) {
     setSelectedCard(null);
   };
 
-  const handleShareBoard = async () => {
+  const handleShare = async () => {
     try {
-      const url = await shareBoard();
-      setShareUrl(url);
+      await shareBoard();
       setShowShareModal(true);
     } catch (error) {
       console.error('Error sharing board:', error);
@@ -301,16 +300,16 @@ export default function GameBoard({ role }: GameBoardProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-6 flex justify-center gap-4">
+      <div className="mt-6 flex justify-between items-center mb-4">
         <button
           onClick={resetBoard}
-          className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition"
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
         >
           New Game
         </button>
         <button
-          onClick={handleShareBoard}
-          className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition"
+          onClick={handleShare}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
         >
           Share Board
         </button>
@@ -318,30 +317,16 @@ export default function GameBoard({ role }: GameBoardProps) {
 
       {/* Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-          <div className="bg-white w-11/12 max-w-md rounded-xl p-6 shadow-lg relative">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Share Board</h2>
+            <p className="mb-4">Board URL has been copied to your clipboard!</p>
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
               onClick={() => setShowShareModal(false)}
-              aria-label="Close"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
             >
-              &times;
+              Close
             </button>
-            <h3 className="text-lg font-semibold mb-4">Share Board</h3>
-            <div className="flex flex-col gap-4">
-              <input
-                type="text"
-                value={shareUrl}
-                readOnly
-                className="w-full p-2 border rounded focus:outline-none focus:border-blue-500 text-black"
-              />
-              <button
-                onClick={copyToClipboard}
-                className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
-              >
-                Copy to Clipboard
-              </button>
-            </div>
           </div>
         </div>
       )}
