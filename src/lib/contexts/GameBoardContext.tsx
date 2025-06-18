@@ -36,6 +36,7 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
         const params = new URLSearchParams(window.location.search);
         const boardParam = params.get('board');
         if (boardParam) {
+          console.log('Loading board from URL:', boardParam);
           await loadBoardFromId(boardParam);
         }
       } catch (error) {
@@ -47,14 +48,16 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
 
   const loadBoardFromId = async (id: string) => {
     if (!db) {
-      console.error('Firebase is not initialized');
+      console.error('Firebase is not initialized - db is null');
       return;
     }
     
     try {
+      console.log('Fetching board data for ID:', id);
       const boardDoc = await getDoc(doc(db as Firestore, 'boards', id));
       if (boardDoc.exists()) {
         const data = boardDoc.data();
+        console.log('Board data loaded:', data);
         setCards(data.cards || Array(25).fill({ word: '', color: 'white' }));
         setNotes(data.notes || '');
         setBoardId(id);
@@ -73,6 +76,7 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
       if (!db || !boardId) return;
       
       try {
+        console.log('Saving board changes:', { boardId, cards, notes });
         await setDoc(doc(db as Firestore, 'boards', boardId), {
           cards,
           notes,
@@ -90,6 +94,7 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
     setCards(Array(25).fill({ word: '', color: 'white' }));
     setNotes('');
     setBoardId(null);
+    localStorage.removeItem('codenamesRole'); // Also clear the role from localStorage
     router.push('/');
   };
 
