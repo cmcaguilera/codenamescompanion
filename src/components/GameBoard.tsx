@@ -13,7 +13,7 @@ type CardType = {
 }
 
 export default function GameBoard({ role }: GameBoardProps) {
-  const { cards, setCards, notes, setNotes, resetBoard, shareBoard } = useGameBoard();
+  const { cards, setCards, notes, setNotes, resetBoard, shareBoard, boardId } = useGameBoard();
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [editWord, setEditWord] = useState('');
   const [editColor, setEditColor] = useState<CardType['color']>('white');
@@ -317,13 +317,16 @@ export default function GameBoard({ role }: GameBoardProps) {
 
       {/* Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Share Board</h2>
-            <p className="mb-4">Board URL has been copied to your clipboard!</p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold mb-4 text-black">Share Board</h2>
+            <p className="text-black mb-4 break-all">
+              {`${window.location.origin}?board=${boardId}`}
+            </p>
+            <p className="text-black mb-6">Board URL has been copied to your clipboard!</p>
             <button
               onClick={() => setShowShareModal(false)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+              className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
             >
               Close
             </button>
