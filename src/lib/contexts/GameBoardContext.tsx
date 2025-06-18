@@ -94,7 +94,8 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
     setCards(Array(25).fill({ word: '', color: 'white' }));
     setNotes('');
     setBoardId(null);
-    localStorage.removeItem('codenamesRole'); // Also clear the role from localStorage
+    
+    // Clear the URL parameters and redirect to home
     router.push('/');
   };
 
@@ -123,8 +124,9 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
         console.log('New board saved to Firebase');
       }
 
-      // Get the current role from localStorage
-      const currentRole = localStorage.getItem('codenamesRole') || 'giver';
+      // Get the current role from URL
+      const params = new URLSearchParams(window.location.search);
+      const currentRole = params.get('role') || 'giver';
 
       // Create the share URL with both board ID and role
       const shareUrl = `${window.location.origin}?board=${currentBoardId}&role=${currentRole}`;
