@@ -118,8 +118,11 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
         console.log('New board saved to Firebase');
       }
 
-      // Create the share URL
-      const shareUrl = `${window.location.origin}?board=${currentBoardId}`;
+      // Get the current role from localStorage
+      const currentRole = localStorage.getItem('codenamesRole') || 'giver';
+
+      // Create the share URL with both board ID and role
+      const shareUrl = `${window.location.origin}?board=${currentBoardId}&role=${currentRole}`;
       console.log('Share URL created:', shareUrl);
       
       // Copy to clipboard
@@ -127,7 +130,7 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
       console.log('URL copied to clipboard');
       
       // Update URL without reloading
-      router.push(`?board=${currentBoardId}`, { scroll: false });
+      router.push(`?board=${currentBoardId}&role=${currentRole}`, { scroll: false });
       console.log('URL updated in browser');
       
       // Show success message

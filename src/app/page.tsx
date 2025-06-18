@@ -9,17 +9,40 @@ export default function Home() {
   const [role, setRole] = useState<'giver' | 'guesser' | null>(null)
   const router = useRouter()
 
+  // Load role from localStorage and URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const boardParam = params.get('board')
-    if (boardParam) {
-      setRole('giver') // If there's a board ID, default to giver role
-      console.log('Loading board:', boardParam)
+    const roleParam = params.get('role')
+    
+    // If there's a role in the URL, use that
+    if (roleParam === 'giver' || roleParam === 'guesser') {
+      setRole(roleParam)
+      localStorage.setItem('codenamesRole', roleParam)
+    } 
+    // If there's a board ID but no role, default to giver
+    else if (boardParam) {
+      setRole('giver')
+      localStorage.setItem('codenamesRole', 'giver')
+    }
+    // Otherwise, try to load from localStorage
+    else {
+      const savedRole = localStorage.getItem('codenamesRole')
+      if (savedRole === 'giver' || savedRole === 'guesser') {
+        setRole(savedRole)
+      }
     }
   }, [])
 
   const handleRoleSelect = (selectedRole: 'giver' | 'guesser') => {
     setRole(selectedRole)
+    localStorage.setItem('codenamesRole', selectedRole)
+    
+    // Update URL with role parameter
+    const params = new URLSearchParams(window.location.search)
+    params.set('role', selectedRole)
+    router.push(`?${params.toString()}`, { scroll: false })
+    
     console.log('Role selected:', selectedRole)
   }
 
