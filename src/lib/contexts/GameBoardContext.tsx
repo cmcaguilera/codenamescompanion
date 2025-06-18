@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { db } from '../firebase/firebase';
 import { doc, setDoc, getDoc, Firestore } from 'firebase/firestore';
 
@@ -28,15 +28,18 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState('');
   const [boardId, setBoardId] = useState<string | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // Load board from URL parameter on mount
   useEffect(() => {
-    const boardParam = searchParams.get('board');
-    if (boardParam) {
-      loadBoardFromId(boardParam);
-    }
-  }, [searchParams]);
+    const loadBoardFromUrl = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const boardParam = params.get('board');
+      if (boardParam) {
+        await loadBoardFromId(boardParam);
+      }
+    };
+    loadBoardFromUrl();
+  }, []);
 
   const loadBoardFromId = async (id: string) => {
     if (!db) return; // Skip if Firebase is not initialized
