@@ -1,6 +1,6 @@
 import { signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirebaseInstances } from './firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Auth functions
@@ -23,6 +23,30 @@ export const signInWithGoogle = async () => {
 };
 
 // Firestore functions
+export const addDocument = async (collectionName: string, data: any) => {
+  const { db } = getFirebaseInstances();
+  return addDoc(collection(db, collectionName), data);
+};
+
+export const getDocuments = async (collectionName: string) => {
+  const { db } = getFirebaseInstances();
+  const querySnapshot = await getDocs(collection(db, collectionName));
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const updateDocument = async (collectionName: string, id: string, data: any) => {
+  const { db } = getFirebaseInstances();
+  return updateDoc(doc(db, collectionName, id), data);
+};
+
+export const deleteDocument = async (collectionName: string, id: string) => {
+  const { db } = getFirebaseInstances();
+  return deleteDoc(doc(db, collectionName, id));
+};
+
 export const saveUserData = async (userId: string, data: any) => {
   const { db } = getFirebaseInstances();
   
