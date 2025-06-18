@@ -1,0 +1,122 @@
+'use client';
+
+import { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { db } from '../firebase/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+
+type CardType = {
+  word: string;
+  color: 'white' | 'red' | 'blue' | 'beige' | 'black';
+};
+
+interface GameBoardContextType {
+  cards: CardType[];
+  setCards: Dispatch<SetStateAction<CardType[]>>;
+  notes: string;
+  setNotes: Dispatch<SetStateAction<string>>;
+  resetBoard: () => void;
+  shareBoard: () => Promise<string>;
+  boardId: string | null;
+}
+
+const GameBoardContext = createContext<GameBoardContextType | undefined>(undefined);
+
+export function GameBoardProvider({ children }: { children: ReactNode }) {
+  const [cards, setCards] = useState<CardType[]>(Array(25).fill({ word: '', color: 'white' }));
+  const [notes, setNotes] = useState('');
+  const [boardId, setBoardId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Load board from URL if it exists
+  useEffect(() => {
+    const loadBoard = async () => {
+      const id = searchParams.get('board');
+      if (id) {
+        try {
+          const boardDoc = await getDoc(doc(db, 'boards', id));
+          if (boardDoc.exists()) {
+            const data = boardDoc.data();
+            setCards(data.cards);
+            setNotes(data.notes);
+            setBoardId(id);
+          }
+        } catch (error) {
+          console.error('Error loading board:', error);
+        }
+      }
+    };
+    loadBoard();
+  }, [searchParams]);
+
+  // Save board changes to Firestore
+  useEffect(() => {
+    const saveBoard = async () => {
+      if (boardId) {
+        try {
+          await setDoc(doc(db, 'boards', boardId), {
+            cards,
+            notes,
+            updatedAt: new Date().toISOString(),
+          });
+        } catch (error) {
+          console.error('Error saving board:', error);
+        }
+      }
+    };
+    saveBoard();
+  }, [cards, notes, boardId]);
+
+  const resetBoard = () => {
+    setCards(Array(25).fill({ word: '', color: 'white' }));
+    setNotes('');
+    setBoardId(null);
+    router.push('/');
+  };
+
+  const shareBoard = async () => {
+    try {
+      // If no boardId exists, create a new one
+      if (!boardId) {
+        const newBoardId = Math.random().toString(36).substring(2, 15);
+        await setDoc(doc(db, 'boards', newBoardId), {
+          cards,
+          notes,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        setBoardId(newBoardId);
+        return `${window.location.origin}?board=${newBoardId}`;
+      }
+      return `${window.location.origin}?board=${boardId}`;
+    } catch (error) {
+      console.error('Error sharing board:', error);
+      throw error;
+    }
+  };
+
+  return (
+    <GameBoardContext.Provider
+      value={{
+        cards,
+        setCards,
+        notes,
+        setNotes,
+        resetBoard,
+        shareBoard,
+        boardId,
+      }}
+    >
+      {children}
+    </GameBoardContext.Provider>
+  );
+}
+
+export function useGameBoard() {
+  const context = useContext(GameBoardContext);
+  if (context === undefined) {
+    throw new Error('useGameBoard must be used within a GameBoardProvider');
+  }
+  return context;
+} 

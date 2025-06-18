@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
+import { useGameBoard } from '@/lib/contexts/GameBoardContext';
 
 interface GameBoardProps {
   role: 'giver' | 'guesser';
@@ -12,16 +13,14 @@ type CardType = {
 }
 
 export default function GameBoard({ role }: GameBoardProps) {
-  // Initialize 25 empty cards
-  const [cards, setCards] = useState<CardType[]>(
-    Array(25).fill({ word: '', color: 'white' })
-  );
-  const [notes, setNotes] = useState('');
+  const { cards, setCards, notes, setNotes, resetBoard, shareBoard } = useGameBoard();
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [editWord, setEditWord] = useState('');
   const [editColor, setEditColor] = useState<CardType['color']>('white');
   const [timerState, setTimerState] = useState<'idle' | 'running' | 'paused' | 'done'>('idle');
   const [timeLeft, setTimeLeft] = useState(120); // 2 minutes in seconds
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -61,7 +60,7 @@ export default function GameBoard({ role }: GameBoardProps) {
   };
 
   const handleColorCycle = (index: number) => {
-    setCards(currentCards => {
+    setCards((currentCards: CardType[]) => {
       const newCards = [...currentCards];
       const colorCycle: CardType['color'][] = ['white', 'red', 'blue', 'beige', 'black'];
       const currentColorIndex = colorCycle.indexOf(newCards[index].color);
@@ -75,7 +74,7 @@ export default function GameBoard({ role }: GameBoardProps) {
   };
 
   const handleWordChange = (index: number, newWord: string) => {
-    setCards(currentCards => {
+    setCards((currentCards: CardType[]) => {
       const newCards = [...currentCards];
       newCards[index] = {
         ...newCards[index],
@@ -95,7 +94,7 @@ export default function GameBoard({ role }: GameBoardProps) {
   // Save changes and close overlay
   const saveCardEdit = () => {
     if (selectedCard === null) return;
-    setCards(currentCards => {
+    setCards((currentCards: CardType[]) => {
       const newCards = [...currentCards];
       newCards[selectedCard] = {
         word: editWord,
@@ -109,6 +108,25 @@ export default function GameBoard({ role }: GameBoardProps) {
   // Cancel edit (no save)
   const cancelEdit = () => {
     setSelectedCard(null);
+  };
+
+  const handleShareBoard = async () => {
+    try {
+      const url = await shareBoard();
+      setShareUrl(url);
+      setShowShareModal(true);
+    } catch (error) {
+      console.error('Error sharing board:', error);
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert('Link copied to clipboard!');
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+    }
   };
 
   return (
@@ -281,6 +299,52 @@ export default function GameBoard({ role }: GameBoardProps) {
           </div>
         )}
       </div>
+
+      {/* Action Buttons */}
+      <div className="mt-6 flex justify-center gap-4">
+        <button
+          onClick={resetBoard}
+          className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition"
+        >
+          New Game
+        </button>
+        <button
+          onClick={handleShareBoard}
+          className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition"
+        >
+          Share Board
+        </button>
+      </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white w-11/12 max-w-md rounded-xl p-6 shadow-lg relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+              onClick={() => setShowShareModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h3 className="text-lg font-semibold mb-4">Share Board</h3>
+            <div className="flex flex-col gap-4">
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                className="w-full p-2 border rounded focus:outline-none focus:border-blue-500 text-black"
+              />
+              <button
+                onClick={copyToClipboard}
+                className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+              >
+                Copy to Clipboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
