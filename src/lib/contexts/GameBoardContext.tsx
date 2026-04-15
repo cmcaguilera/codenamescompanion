@@ -154,10 +154,12 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
 
     const code = generateShortCode();
     try {
-      await setDoc(doc(db as Firestore, 'shared_boards', code), {
+      await setDoc(doc(db as Firestore, 'boards', code), {
         cards,
         notes,
+        isSnapshot: true,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
       return code;
     } catch (err) {
@@ -170,7 +172,7 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
     if (!db) return false;
 
     try {
-      const snap = await getDoc(doc(db as Firestore, 'shared_boards', code.toUpperCase().trim()));
+      const snap = await getDoc(doc(db as Firestore, 'boards', code.toUpperCase().trim()));
       if (!snap.exists()) return false;
 
       const data = snap.data();
