@@ -1,37 +1,49 @@
-'use client'  // Add this since we're using useState
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import GameBoard from '@/components/GameBoard'
 import { GameBoardProvider } from '@/lib/contexts/GameBoardContext'
+import JoinScreen from '@/components/JoinScreen'
+
+type Step = 'role' | 'join' | 'game'
 
 export default function Home() {
+  const [step, setStep] = useState<Step>('role')
   const [role, setRole] = useState<'giver' | 'guesser' | null>(null)
   const router = useRouter()
 
-  // Load role from URL on mount
+  // If URL has a ?board= param, skip straight to game
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const roleParam = params.get('role')
-    
-    // Only set role from URL if it's a valid role
-    if (roleParam === 'giver' || roleParam === 'guesser') {
-      setRole(roleParam)
+    if (params.get('board') && params.get('role')) {
+      const roleParam = params.get('role')
+      if (roleParam === 'giver' || roleParam === 'guesser') {
+        setRole(roleParam)
+        setStep('game')
+      }
     }
   }, [])
 
   const handleRoleSelect = (selectedRole: 'giver' | 'guesser') => {
     setRole(selectedRole)
-    
-    // Update URL with role parameter
-    const params = new URLSearchParams(window.location.search)
-    params.set('role', selectedRole)
-    router.push(`?${params.toString()}`, { scroll: false })
-    
-    console.log('Role selected:', selectedRole)
+    setStep('join')
   }
 
-  if (role === null) {
+  const handleStartFresh = () => {
+    setStep('game')
+  }
+
+  const handleJoined = () => {
+    setStep('game')
+  }
+
+  const handleBack = () => {
+    setRole(null)
+    setStep('role')
+  }
+
+  if (step === 'role') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
@@ -55,9 +67,22 @@ export default function Home() {
     )
   }
 
+  if (step === 'join' && role) {
+    return (
+      <GameBoardProvider>
+        <JoinScreen
+          role={role}
+          onStartFresh={handleStartFresh}
+          onJoined={handleJoined}
+          onBack={handleBack}
+        />
+      </GameBoardProvider>
+    )
+  }
+
   return (
     <GameBoardProvider>
-      <GameBoard role={role} />
+      <GameBoard role={role!} />
     </GameBoardProvider>
   )
 }

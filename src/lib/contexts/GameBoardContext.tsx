@@ -1,13 +1,14 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode, Dispatch, SetStateAction } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '../firebase/firebase';
 import { doc, setDoc, getDoc, Firestore } from 'firebase/firestore';
 
-type CardType = {
+export type CardType = {
   word: string;
   color: 'white' | 'red' | 'blue' | 'beige' | 'black';
+  guessed?: boolean;
 };
 
 interface GameBoardContextType {
@@ -16,136 +17,181 @@ interface GameBoardContextType {
   notes: string;
   setNotes: Dispatch<SetStateAction<string>>;
   resetBoard: () => void;
-  shareBoard: () => Promise<void>;
+  generateShareCode: () => Promise<string | null>;
+  seedFromShareCode: (code: string) => Promise<boolean>;
   boardId: string | null;
-  loadBoardFromId: (id: string) => Promise<void>;
 }
 
 const GameBoardContext = createContext<GameBoardContextType | undefined>(undefined);
 
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const LOCAL_STORAGE_KEY = 'codenames_board_id';
+
+function generateBoardId(): string {
+  return Array.from({ length: 12 }, () => Math.random().toString(36)[2]).join('');
+}
+
+function generateShortCode(): string {
+  return Array.from({ length: 6 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('');
+}
+
+const EMPTY_CARDS: CardType[] = Array(25).fill(null).map(() => ({ word: '', color: 'white' }));
+
 export function GameBoardProvider({ children }: { children: ReactNode }) {
-  const [cards, setCards] = useState<CardType[]>(Array(25).fill({ word: '', color: 'white' }));
-  const [notes, setNotes] = useState('');
+  const [cards, setCardsState] = useState<CardType[]>(EMPTY_CARDS);
+  const [notes, setNotesState] = useState('');
   const [boardId, setBoardId] = useState<string | null>(null);
+  const hasInitialized = useRef(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
-  // Load board from URL parameter on mount
+  // On mount: restore board from URL param or localStorage
   useEffect(() => {
-    const loadBoardFromUrl = async () => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const init = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
         const boardParam = params.get('board');
+
         if (boardParam) {
-          console.log('Loading board from URL:', boardParam);
-          await loadBoardFromId(boardParam);
+          await loadBoardById(boardParam);
+          return;
         }
-      } catch (error) {
-        console.error('Error loading board from URL:', error);
+
+        const savedId = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedId) {
+          await loadBoardById(savedId);
+        }
+      } catch (err) {
+        console.error('Error restoring board on mount:', err);
       }
     };
-    loadBoardFromUrl();
+
+    init();
   }, []);
 
-  const loadBoardFromId = async (id: string) => {
-    if (!db) {
-      console.error('Firebase is not initialized - db is null');
-      return;
-    }
-    
-    try {
-      console.log('Fetching board data for ID:', id);
-      const boardDoc = await getDoc(doc(db as Firestore, 'boards', id));
-      if (boardDoc.exists()) {
-        const data = boardDoc.data();
-        console.log('Board data loaded:', data);
-        setCards(data.cards || Array(25).fill({ word: '', color: 'white' }));
-        setNotes(data.notes || '');
-        setBoardId(id);
-        console.log('Board loaded successfully:', id);
-      } else {
-        console.error('Board not found:', id);
-      }
-    } catch (error) {
-      console.error('Error loading board:', error);
-    }
-  };
-
-  // Save board changes to Firestore
+  // Debounced auto-save whenever cards/notes change and boardId is set
   useEffect(() => {
-    const saveBoard = async () => {
-      if (!db || !boardId) return;
-      
-      try {
-        console.log('Saving board changes:', { boardId, cards, notes });
-        await setDoc(doc(db as Firestore, 'boards', boardId), {
-          cards,
-          notes,
-          updatedAt: new Date().toISOString(),
-        });
-        console.log('Board saved successfully:', boardId);
-      } catch (error) {
-        console.error('Error saving board:', error);
-      }
+    if (!boardId) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      saveBoard(boardId, cards, notes);
+    }, 1500);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    saveBoard();
   }, [cards, notes, boardId]);
 
-  const resetBoard = () => {
-    setCards(Array(25).fill({ word: '', color: 'white' }));
-    setNotes('');
-    setBoardId(null);
-    
-    // Clear the URL parameters and redirect to home
-    router.push('/');
+  async function loadBoardById(id: string) {
+    if (!db) return;
+    try {
+      const snap = await getDoc(doc(db as Firestore, 'boards', id));
+      if (snap.exists()) {
+        const data = snap.data();
+        setCardsState(data.cards || EMPTY_CARDS);
+        setNotesState(data.notes || '');
+        setBoardId(id);
+        localStorage.setItem(LOCAL_STORAGE_KEY, id);
+      }
+    } catch (err) {
+      console.error('Error loading board:', err);
+    }
+  }
+
+  async function saveBoard(id: string, currentCards: CardType[], currentNotes: string) {
+    if (!db) return;
+    try {
+      await setDoc(doc(db as Firestore, 'boards', id), {
+        cards: currentCards,
+        notes: currentNotes,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (err) {
+      console.error('Error saving board:', err);
+    }
+  }
+
+  // Wrapped setters: create boardId on first edit if one doesn't exist yet
+  const setCards: Dispatch<SetStateAction<CardType[]>> = (value) => {
+    setCardsState((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      ensureBoardId(next, notes);
+      return next;
+    });
   };
 
-  const shareBoard = async () => {
-    console.log('shareBoard function called');
-    if (!db) {
-      console.error('Firebase is not initialized - db is null');
-      return;
+  const setNotes: Dispatch<SetStateAction<string>> = (value) => {
+    setNotesState((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      ensureBoardId(cards, next);
+      return next;
+    });
+  };
+
+  // Creates a boardId on first edit and immediately saves to Firestore
+  function ensureBoardId(currentCards: CardType[], currentNotes: string) {
+    if (boardId) return;
+    if (!db) return;
+
+    const newId = generateBoardId();
+    setBoardId(newId);
+    localStorage.setItem(LOCAL_STORAGE_KEY, newId);
+
+    setDoc(doc(db as Firestore, 'boards', newId), {
+      cards: currentCards,
+      notes: currentNotes,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }).catch((err) => console.error('Error creating board:', err));
+  }
+
+  const generateShareCode = async (): Promise<string | null> => {
+    if (!db) return null;
+
+    const code = generateShortCode();
+    try {
+      await setDoc(doc(db as Firestore, 'shared_boards', code), {
+        cards,
+        notes,
+        createdAt: new Date().toISOString(),
+      });
+      return code;
+    } catch (err) {
+      console.error('Error generating share code:', err);
+      return null;
     }
+  };
+
+  const seedFromShareCode = async (code: string): Promise<boolean> => {
+    if (!db) return false;
 
     try {
-      let currentBoardId = boardId;
-      console.log('Current boardId:', currentBoardId);
+      const snap = await getDoc(doc(db as Firestore, 'shared_boards', code.toUpperCase().trim()));
+      if (!snap.exists()) return false;
 
-      // If no boardId exists, create a new one
-      if (!currentBoardId) {
-        currentBoardId = Math.random().toString(36).substring(2, 15);
-        console.log('Created new boardId:', currentBoardId);
-        await setDoc(doc(db as Firestore, 'boards', currentBoardId), {
-          cards,
-          notes,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        setBoardId(currentBoardId);
-        console.log('New board saved to Firebase');
-      }
-
-      // Get the current role from URL
-      const params = new URLSearchParams(window.location.search);
-      const currentRole = params.get('role') || 'giver';
-
-      // Create the share URL with both board ID and role
-      const shareUrl = `${window.location.origin}?board=${currentBoardId}&role=${currentRole}`;
-      console.log('Share URL created:', shareUrl);
-      
-      // Copy to clipboard
-      await navigator.clipboard.writeText(shareUrl);
-      console.log('URL copied to clipboard');
-      
-      // Update URL without reloading
-      router.push(`?board=${currentBoardId}&role=${currentRole}`, { scroll: false });
-      console.log('URL updated in browser');
-      
-      // Show success message
-      alert('Board URL copied to clipboard!');
-    } catch (error) {
-      console.error('Error sharing board:', error);
-      alert('Failed to share board. Please try again.');
+      const data = snap.data();
+      setCardsState(data.cards || EMPTY_CARDS);
+      setNotesState(data.notes || '');
+      // Don't set boardId yet — will be created on first edit
+      setBoardId(null);
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      return true;
+    } catch (err) {
+      console.error('Error seeding from share code:', err);
+      return false;
     }
+  };
+
+  const resetBoard = () => {
+    setCardsState(EMPTY_CARDS);
+    setNotesState('');
+    setBoardId(null);
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    router.push('/');
   };
 
   return (
@@ -156,9 +202,9 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
         notes,
         setNotes,
         resetBoard,
-        shareBoard,
+        generateShareCode,
+        seedFromShareCode,
         boardId,
-        loadBoardFromId,
       }}
     >
       {children}
@@ -172,4 +218,4 @@ export function useGameBoard() {
     throw new Error('useGameBoard must be used within a GameBoardProvider');
   }
   return context;
-} 
+}

@@ -2,25 +2,23 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useGameBoard } from '@/lib/contexts/GameBoardContext';
+import { CardType } from '@/lib/contexts/GameBoardContext';
 
 interface GameBoardProps {
   role: 'giver' | 'guesser';
 }
 
-type CardType = {
-  word: string;
-  color: 'white' | 'red' | 'blue' | 'beige' | 'black';
-}
-
 export default function GameBoard({ role }: GameBoardProps) {
-  const { cards, setCards, notes, setNotes, resetBoard, shareBoard, boardId } = useGameBoard();
+  const { cards, setCards, notes, setNotes, resetBoard, generateShareCode } = useGameBoard();
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [editWord, setEditWord] = useState('');
   const [editColor, setEditColor] = useState<CardType['color']>('white');
+  const [editGuessed, setEditGuessed] = useState(false);
   const [timerState, setTimerState] = useState<'idle' | 'running' | 'paused' | 'done'>('idle');
-  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(120);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [shareUrl, setShareUrl] = useState('');
+  const [shareCode, setShareCode] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -38,20 +36,11 @@ export default function GameBoard({ role }: GameBoardProps) {
     };
   }, [timerState, timeLeft]);
 
-  const startTimer = () => {
-    setTimeLeft(120);
-    setTimerState('running');
-  };
+  const startTimer = () => { setTimeLeft(120); setTimerState('running'); };
   const pauseTimer = () => setTimerState('paused');
   const resumeTimer = () => setTimerState('running');
-  const cancelTimer = () => {
-    setTimerState('idle');
-    setTimeLeft(120);
-  };
-  const resetTimer = () => {
-    setTimerState('idle');
-    setTimeLeft(120);
-  };
+  const cancelTimer = () => { setTimerState('idle'); setTimeLeft(120); };
+  const resetTimer = () => { setTimerState('idle'); setTimeLeft(120); };
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -59,39 +48,13 @@ export default function GameBoard({ role }: GameBoardProps) {
     return `${m}:${s}`;
   };
 
-  const handleColorCycle = (index: number) => {
-    setCards((currentCards: CardType[]) => {
-      const newCards = [...currentCards];
-      const colorCycle: CardType['color'][] = ['white', 'red', 'blue', 'beige', 'black'];
-      const currentColorIndex = colorCycle.indexOf(newCards[index].color);
-      const nextColorIndex = (currentColorIndex + 1) % colorCycle.length;
-      newCards[index] = {
-        ...newCards[index],
-        color: colorCycle[nextColorIndex]
-      };
-      return newCards;
-    });
-  };
-
-  const handleWordChange = (index: number, newWord: string) => {
-    setCards((currentCards: CardType[]) => {
-      const newCards = [...currentCards];
-      newCards[index] = {
-        ...newCards[index],
-        word: newWord
-      };
-      return newCards;
-    });
-  };
-
-  // Open card editor overlay
   const openCardEditor = (index: number) => {
     setSelectedCard(index);
     setEditWord(cards[index].word);
     setEditColor(cards[index].color);
+    setEditGuessed(cards[index].guessed ?? false);
   };
 
-  // Save changes and close overlay
   const saveCardEdit = () => {
     if (selectedCard === null) return;
     setCards((currentCards: CardType[]) => {
@@ -99,49 +62,59 @@ export default function GameBoard({ role }: GameBoardProps) {
       newCards[selectedCard] = {
         word: editWord,
         color: editColor,
+        guessed: editGuessed,
       };
       return newCards;
     });
     setSelectedCard(null);
   };
 
-  // Cancel edit (no save)
-  const cancelEdit = () => {
-    setSelectedCard(null);
-  };
+  const cancelEdit = () => setSelectedCard(null);
 
   const handleShare = async () => {
-    console.log('Share button clicked');
-    try {
-      console.log('Calling shareBoard function');
-      await shareBoard();
-      console.log('shareBoard completed successfully');
-      setShowShareModal(true);
-      console.log('Share modal shown');
-    } catch (error) {
-      console.error('Error sharing board:', error);
+    setShareLoading(true);
+    setShowShareModal(true);
+    const code = await generateShareCode();
+    setShareLoading(false);
+    if (code) {
+      setShareCode(code);
+    } else {
+      setShowShareModal(false);
+      alert('Failed to generate share code. Please try again.');
     }
   };
 
-  const copyToClipboard = async () => {
+  const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      alert('Link copied to clipboard!');
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
+      await navigator.clipboard.writeText(shareCode);
+      alert('Code copied!');
+    } catch {
+      // fallback: select the text
+    }
+  };
+
+  const copyLink = async () => {
+    const url = `${window.location.origin}?board=${shareCode}&role=${role}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('Link copied!');
+    } catch {
+      // fallback
     }
   };
 
   return (
     <div className="w-full max-w-4xl mx-auto px-1 sm:px-4 pt-4">
       <h2 className="text-xl font-semibold mb-4">You are the {role}</h2>
+
+      {/* Game Board */}
       <div className="grid grid-cols-5 gap-[2px] sm:gap-2 mb-6">
         {cards.map((card, index) => (
           <div
             key={index}
             onClick={() => openCardEditor(index)}
             className={`
-              aspect-square rounded-lg border-2 cursor-pointer
+              aspect-square rounded-lg border-2 cursor-pointer relative
               flex items-center justify-center text-center
               p-1 sm:p-2
               ${card.color === 'red' ? 'bg-red-500 hover:bg-red-600' :
@@ -164,6 +137,12 @@ export default function GameBoard({ role }: GameBoardProps) {
               paddingRight: '0.25rem',
             }}
           >
+            {/* Guessed overlay */}
+            {card.guessed && (
+              <div className="absolute inset-0 rounded-lg bg-gray-500 bg-opacity-70 flex items-center justify-center z-10">
+                <span className="text-white text-xs font-bold select-none">✓</span>
+              </div>
+            )}
             <span
               className={`w-full text-center font-medium select-none truncate leading-tight
                 ${card.color === 'black' || card.color === 'blue' || card.color === 'red' ? 'text-white' : 'text-black'}
@@ -184,7 +163,7 @@ export default function GameBoard({ role }: GameBoardProps) {
         ))}
       </div>
 
-      {/* Overlay for editing card */}
+      {/* Card Editor Overlay */}
       {selectedCard !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="bg-white w-11/12 max-w-sm rounded-xl p-6 shadow-lg relative flex flex-col gap-4">
@@ -196,6 +175,7 @@ export default function GameBoard({ role }: GameBoardProps) {
               &times;
             </button>
             <h3 className="text-lg font-semibold mb-2">Edit Card</h3>
+
             <label className="block mb-2 text-sm font-medium">Word</label>
             <input
               type="text"
@@ -206,6 +186,7 @@ export default function GameBoard({ role }: GameBoardProps) {
               autoFocus
               placeholder="Word"
             />
+
             <label className="block mt-2 mb-1 text-sm font-medium">Color</label>
             <div className="flex gap-2 mb-2">
               {(['red', 'blue', 'beige', 'black'] as CardType['color'][]).map(color => (
@@ -226,10 +207,29 @@ export default function GameBoard({ role }: GameBoardProps) {
                   {color === 'blue' && <span className="text-black font-semibold">Blue</span>}
                   {color === 'beige' && <span className="text-black font-semibold">Civilian</span>}
                   {color === 'black' && <span className="text-white font-semibold">Death</span>}
-                  {editColor === color && <span className="absolute right-2 text-white text-lg">✓</span>}
                 </button>
               ))}
             </div>
+
+            {/* Guessed toggle */}
+            <div className="flex items-center gap-3 mt-1">
+              <button
+                type="button"
+                onClick={() => setEditGuessed(g => !g)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
+                  ${editGuessed ? 'bg-gray-500' : 'bg-gray-200'}`}
+                aria-label="Toggle guessed"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+                    ${editGuessed ? 'translate-x-6' : 'translate-x-1'}`}
+                />
+              </button>
+              <span className="text-sm font-medium text-gray-700">
+                {editGuessed ? 'Marked as guessed' : 'Mark as guessed'}
+              </span>
+            </div>
+
             <button
               className="mt-2 w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
               onClick={saveCardEdit}
@@ -240,7 +240,7 @@ export default function GameBoard({ role }: GameBoardProps) {
         </div>
       )}
 
-      {/* Show notes textarea for both roles */}
+      {/* Notes */}
       <div className="mt-4">
         <textarea
           value={notes}
@@ -250,7 +250,7 @@ export default function GameBoard({ role }: GameBoardProps) {
         />
       </div>
 
-      {/* Countdown Timer UI */}
+      {/* Countdown Timer */}
       <div className="mt-2 flex flex-col items-center">
         {timerState === 'idle' && (
           <button
@@ -264,14 +264,8 @@ export default function GameBoard({ role }: GameBoardProps) {
           <>
             <div className="text-3xl font-mono mb-2">{formatTime(timeLeft)}</div>
             <div className="flex gap-2">
-              <button
-                className="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600"
-                onClick={pauseTimer}
-              >Pause</button>
-              <button
-                className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400"
-                onClick={cancelTimer}
-              >Cancel</button>
+              <button className="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600" onClick={pauseTimer}>Pause</button>
+              <button className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400" onClick={cancelTimer}>Cancel</button>
             </div>
           </>
         )}
@@ -279,14 +273,8 @@ export default function GameBoard({ role }: GameBoardProps) {
           <>
             <div className="text-3xl font-mono mb-2">{formatTime(timeLeft)}</div>
             <div className="flex gap-2">
-              <button
-                className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700"
-                onClick={resumeTimer}
-              >Resume</button>
-              <button
-                className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400"
-                onClick={cancelTimer}
-              >Cancel</button>
+              <button className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700" onClick={resumeTimer}>Resume</button>
+              <button className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400" onClick={cancelTimer}>Cancel</button>
             </div>
           </>
         )}
@@ -322,15 +310,40 @@ export default function GameBoard({ role }: GameBoardProps) {
       {/* Share Modal */}
       {showShareModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
             <h2 className="text-xl font-bold mb-4 text-black">Share Board</h2>
-            <p className="text-black mb-4 break-all">
-              {`${window.location.origin}?board=${boardId}`}
-            </p>
-            <p className="text-black mb-6">Board URL has been copied to your clipboard!</p>
+
+            {shareLoading ? (
+              <div className="text-center text-gray-500 py-4">Generating code...</div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 mb-2">Board Code</p>
+                <div className="bg-gray-100 rounded-lg p-4 text-center mb-3">
+                  <span className="text-4xl font-mono font-bold tracking-widest text-black">{shareCode}</span>
+                </div>
+                <button
+                  onClick={copyCode}
+                  className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition mb-4"
+                >
+                  Copy Code
+                </button>
+
+                <p className="text-sm text-gray-500 mb-2">Or share full link</p>
+                <p className="text-xs text-gray-400 break-all mb-2">
+                  {typeof window !== 'undefined' ? `${window.location.origin}?board=${shareCode}&role=${role}` : ''}
+                </p>
+                <button
+                  onClick={copyLink}
+                  className="w-full bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition mb-4"
+                >
+                  Copy Link
+                </button>
+              </>
+            )}
+
             <button
-              onClick={() => setShowShareModal(false)}
-              className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
+              onClick={() => { setShowShareModal(false); setShareCode(''); }}
+              className="w-full border border-gray-300 text-gray-600 py-2 rounded hover:bg-gray-50 transition"
             >
               Close
             </button>
@@ -338,5 +351,5 @@ export default function GameBoard({ role }: GameBoardProps) {
         </div>
       )}
     </div>
-  )
-} 
+  );
+}
