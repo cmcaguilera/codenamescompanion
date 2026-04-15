@@ -150,17 +150,24 @@ export function GameBoardProvider({ children }: { children: ReactNode }) {
   }
 
   const generateShareCode = async (): Promise<string | null> => {
-    if (!db) return null;
+    if (!db) {
+      console.error('Firebase not initialized — check NEXT_PUBLIC_FIREBASE_* env vars');
+      return null;
+    }
 
     const code = generateShortCode();
     try {
-      await setDoc(doc(db as Firestore, 'boards', code), {
+      const writePromise = setDoc(doc(db as Firestore, 'boards', code), {
         cards,
         notes,
         isSnapshot: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore write timed out — check Firebase project setup')), 8000)
+      );
+      await Promise.race([writePromise, timeoutPromise]);
       return code;
     } catch (err) {
       console.error('Error generating share code:', err);
