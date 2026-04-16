@@ -1,11 +1,41 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
+import { Camera } from 'lucide-react';
 import { useGameBoard } from '@/lib/contexts/GameBoardContext';
 import { CardType } from '@/lib/contexts/GameBoardContext';
 
 interface GameBoardProps {
   role: 'giver' | 'guesser';
+}
+
+function fileToBase64(file: File): Promise<{ data: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const [header, data] = result.split(',');
+      const mimeType = header.match(/data:([^;]+)/)?.[1] ?? 'image/jpeg';
+      resolve({ data, mimeType });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function callVisionApi(
+  image: string,
+  mimeType: string,
+  type: 'words' | 'colors'
+): Promise<string[]> {
+  const res = await fetch('/api/vision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image, mimeType, type }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? 'Vision API failed');
+  return json.data as string[];
 }
 
 export default function GameBoard({ role }: GameBoardProps) {
@@ -20,6 +50,14 @@ export default function GameBoard({ role }: GameBoardProps) {
   const [shareCode, setShareCode] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Vision scan state
+  const [wordScanLoading, setWordScanLoading] = useState(false);
+  const [colorScanLoading, setColorScanLoading] = useState(false);
+  const [wordScanResult, setWordScanResult] = useState<string[] | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const wordInputRef = useRef<HTMLInputElement>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (timerState === 'running') {
@@ -103,9 +141,129 @@ export default function GameBoard({ role }: GameBoardProps) {
     }
   };
 
+  // ── Vision: word scan ──────────────────────────────────────────────────────
+
+  const handleWordFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setScanError(null);
+    setWordScanLoading(true);
+    try {
+      const { data, mimeType } = await fileToBase64(file);
+      const words = await callVisionApi(data, mimeType, 'words');
+      setWordScanResult(words);
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Word scan failed');
+    } finally {
+      setWordScanLoading(false);
+    }
+  };
+
+  const confirmWordScan = () => {
+    if (!wordScanResult) return;
+    setCards((currentCards: CardType[]) =>
+      currentCards.map((card, i) => ({
+        ...card,
+        word: wordScanResult[i] ?? card.word,
+      }))
+    );
+    setWordScanResult(null);
+  };
+
+  // ── Vision: color scan ─────────────────────────────────────────────────────
+
+  const handleColorFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setScanError(null);
+    setColorScanLoading(true);
+    try {
+      const { data, mimeType } = await fileToBase64(file);
+      const colors = await callVisionApi(data, mimeType, 'colors');
+      setCards((currentCards: CardType[]) =>
+        currentCards.map((card, i) => ({
+          ...card,
+          color: (colors[i] as CardType['color']) ?? card.color,
+        }))
+      );
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Color scan failed');
+    } finally {
+      setColorScanLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto px-1 sm:px-4 pt-4">
-      <h2 className="text-xl font-semibold mb-4">You are the {role}</h2>
+
+      {/* Header row: role label + scan buttons */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">You are the {role}</h2>
+        <div className="flex items-center gap-2">
+          {/* Word scan button */}
+          <button
+            onClick={() => wordInputRef.current?.click()}
+            disabled={wordScanLoading || colorScanLoading}
+            title="Scan board words from photo"
+            className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 transition-colors"
+            aria-label="Scan board words"
+          >
+            {wordScanLoading
+              ? <span className="block w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              : <Camera size={20} className="text-gray-700" />
+            }
+          </button>
+
+          {/* Color map scan button — giver only */}
+          {role === 'giver' && (
+            <button
+              onClick={() => colorInputRef.current?.click()}
+              disabled={wordScanLoading || colorScanLoading}
+              title="Scan color map from photo"
+              className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 transition-colors"
+              aria-label="Scan color map"
+            >
+              {colorScanLoading
+                ? <span className="block w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                : (
+                  <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+                    <rect x="0" y="0" width="9" height="9" rx="1.5" fill="#ef4444" />
+                    <rect x="11" y="0" width="9" height="9" rx="1.5" fill="#3b82f6" />
+                    <rect x="0" y="11" width="9" height="9" rx="1.5" fill="#fde68a" />
+                    <rect x="11" y="11" width="9" height="9" rx="1.5" fill="#111111" />
+                  </svg>
+                )
+              }
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Hidden file inputs */}
+      <input
+        ref={wordInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleWordFileChange}
+      />
+      <input
+        ref={colorInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleColorFileChange}
+      />
+
+      {/* Scan error banner */}
+      {scanError && (
+        <div className="mb-3 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center justify-between">
+          <span>{scanError}</span>
+          <button onClick={() => setScanError(null)} className="ml-2 text-red-400 hover:text-red-600 font-bold text-lg leading-none">&times;</button>
+        </div>
+      )}
 
       {/* Game Board */}
       <div className="grid grid-cols-5 gap-[2px] sm:gap-2 mb-6">
@@ -236,6 +394,41 @@ export default function GameBoard({ role }: GameBoardProps) {
             >
               Save & Back
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Word Scan Confirmation Modal */}
+      {wordScanResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4">
+          <div className="bg-white w-full max-w-sm rounded-xl p-5 shadow-lg flex flex-col gap-4">
+            <h3 className="text-lg font-semibold">Detected Words</h3>
+            <p className="text-sm text-gray-500">Review the words below. Tap Confirm to apply them to the board.</p>
+            <div className="grid grid-cols-5 gap-1">
+              {wordScanResult.map((word, i) => (
+                <div
+                  key={i}
+                  className="bg-gray-100 rounded text-center text-xs font-medium py-1 px-0.5 truncate text-black"
+                  title={word}
+                >
+                  {word}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 mt-1">
+              <button
+                onClick={() => setWordScanResult(null)}
+                className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmWordScan}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+              >
+                Confirm
+              </button>
+            </div>
           </div>
         </div>
       )}
