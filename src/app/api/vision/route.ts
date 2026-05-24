@@ -33,22 +33,41 @@ Identify all 25 words visible on the cards, reading left to right, top to bottom
 Return ONLY a valid JSON array of exactly 25 strings with no markdown, code fences, or explanation.
 Each string should be the word shown on that card in uppercase. If a word is unclear, make your best guess.
 Example: ["WORD1","WORD2","WORD3",...,"WORD25"]`
-      : `This is a photo of a Codenames key card (the spymaster's secret color map). It shows a 5x5 grid of 25 colored squares.
-The colors represent:
-- Red squares = red team
-- Blue squares = blue team
-- Beige / tan / light yellow / cream squares = civilian (neutral)
-- Black square = death card (assassin)
-Identify the color of each of the 25 squares, reading left to right, top to bottom (row by row).
-Return ONLY a valid JSON array of exactly 25 strings with no markdown, code fences, or explanation.
-Each string must be exactly one of: "red", "blue", "beige", "black"
-Example: ["red","blue","beige","black","red",...]`;
+      : `You are reading a Codenames key card (the spymaster's secret color map). This is a physical card with a 5×5 grid of exactly 25 colored squares arranged in 5 rows and 5 columns.
+
+Color definitions (use these exact strings):
+- "red"   = clearly red or crimson colored squares
+- "blue"  = clearly blue colored squares
+- "beige" = tan, cream, or light-colored neutral squares — distinctly lighter and more muted than red; a sandy or yellowish-cream tone
+- "black" = the single very dark or black square (there is exactly one on the card)
+
+Instructions:
+1. Identify the rectangular 5×5 grid boundary on the card.
+2. Read the squares strictly left to right, row by row, starting from the top-left corner.
+3. For each of the 25 squares output exactly one color string.
+4. Key distinction: beige squares are clearly lighter and more neutral-toned than red squares. Pinkish-red → "red". Sandy/cream/light-tan → "beige".
+5. Count to confirm you have exactly 25 values before responding.
+
+Return ONLY a JSON array of exactly 25 strings. No markdown, no explanation, no code fences.
+Each string must be one of: "red", "blue", "beige", "black"
+Example: ["red","blue","beige","black","red","blue","beige","red","blue","red","beige","blue","red","beige","blue","red","blue","beige","red","blue","red","beige","blue","red","black"]`;
 
   try {
-    const result = await model.generateContent([
-      { inlineData: { data: image, mimeType } },
-      prompt,
-    ]);
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { inlineData: { data: image, mimeType } },
+            { text: prompt },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0,
+        ...(type === 'colors' ? { responseMimeType: 'application/json' } : {}),
+      },
+    });
 
     const text = result.response.text().trim();
 

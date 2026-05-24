@@ -9,17 +9,34 @@ interface GameBoardProps {
   role: 'giver' | 'guesser';
 }
 
-function fileToBase64(file: File): Promise<{ data: string; mimeType: string }> {
+// Resize to max 1024px and convert to JPEG to keep payloads small and avoid format issues.
+function compressImage(file: File, maxPx = 1024): Promise<{ data: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const [header, data] = result.split(',');
+    if (file.size === 0) {
+      reject(new Error('Selected file is empty. Please try again.'));
+      return;
+    }
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas not supported')); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const [header, data] = dataUrl.split(',');
       const mimeType = header.match(/data:([^;]+)/)?.[1] ?? 'image/jpeg';
       resolve({ data, mimeType });
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load image. Please try a different photo.'));
+    };
+    img.src = objectUrl;
   });
 }
 
@@ -33,7 +50,12 @@ async function callVisionApi(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image, mimeType, type }),
   });
-  const json = await res.json();
+  let json: { data?: string[]; error?: string };
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error('Unexpected server response — please try again.');
+  }
   if (!res.ok) throw new Error(json.error ?? 'Vision API failed');
   return json.data as string[];
 }
@@ -150,7 +172,7 @@ export default function GameBoard({ role }: GameBoardProps) {
     setScanError(null);
     setWordScanLoading(true);
     try {
-      const { data, mimeType } = await fileToBase64(file);
+      const { data, mimeType } = await compressImage(file);
       const words = await callVisionApi(data, mimeType, 'words');
       setWordScanResult(words);
     } catch (err) {
@@ -180,7 +202,7 @@ export default function GameBoard({ role }: GameBoardProps) {
     setScanError(null);
     setColorScanLoading(true);
     try {
-      const { data, mimeType } = await fileToBase64(file);
+      const { data, mimeType } = await compressImage(file);
       const colors = await callVisionApi(data, mimeType, 'colors');
       setCards((currentCards: CardType[]) =>
         currentCards.map((card, i) => ({
