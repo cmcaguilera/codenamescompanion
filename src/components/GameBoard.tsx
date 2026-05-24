@@ -217,6 +217,15 @@ export default function GameBoard({ role }: GameBoardProps) {
     }
   };
 
+  // ── Quick-add: append color-filtered words to notes ──────────────────────
+  const wordsOf = (color: CardType['color']) =>
+    cards.filter(c => c.color === color && c.word.trim()).map(c => c.word.trim());
+
+  const addColorToNotes = (color: CardType['color']) => {
+    const list = wordsOf(color).join('\n');
+    setNotes(prev => prev.trim() ? `${prev.trim()}\n\n${list}` : list);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto px-1 sm:px-4 pt-4 pb-8">
 
@@ -457,6 +466,35 @@ export default function GameBoard({ role }: GameBoardProps) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Quick-add words to notes — giver only */}
+      {role === 'giver' && (
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          {(
+            [
+              { color: 'blue',  label: 'Blue',      active: 'bg-blue-600 hover:bg-blue-500' },
+              { color: 'red',   label: 'Red',       active: 'bg-red-600 hover:bg-red-500' },
+              { color: 'black', label: 'Death',     active: 'bg-gray-900 hover:bg-gray-800 border border-slate-600' },
+              { color: 'beige', label: 'Civilians', active: 'bg-amber-500 hover:bg-amber-400' },
+            ] as { color: CardType['color']; label: string; active: string }[]
+          ).map(({ color, label, active }) => {
+            const enabled = wordsOf(color).length > 0;
+            return (
+              <button
+                key={color}
+                onClick={() => addColorToNotes(color)}
+                disabled={!enabled}
+                title={enabled ? `Add ${label} words to notes` : 'No words set for this color yet'}
+                className={`py-2 px-1 rounded-lg text-xs font-bold tracking-wide transition-all duration-150 text-white ${
+                  enabled ? `${active} active:scale-95` : 'bg-slate-700 opacity-30 cursor-not-allowed'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       )}
 
