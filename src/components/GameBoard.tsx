@@ -221,8 +221,8 @@ export default function GameBoard({ role }: GameBoardProps) {
   const wordsOf = (color: CardType['color']) =>
     cards.filter(c => c.color === color && c.word.trim()).map(c => c.word.trim());
 
-  const addColorToNotes = (color: CardType['color']) => {
-    const list = wordsOf(color).join('\n');
+  const addColorToNotes = (color: CardType['color'], header: string) => {
+    const list = `${header}\n${wordsOf(color).join('\n')}`;
     setNotes(prev => prev.trim() ? `${prev.trim()}\n\n${list}` : list);
   };
 
@@ -471,20 +471,22 @@ export default function GameBoard({ role }: GameBoardProps) {
 
       {/* Quick-add words to notes — giver only */}
       {role === 'giver' && (
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="mb-4">
+        <p className="text-slate-500 text-xs tracking-wide mb-2">Add these cards to your notes:</p>
+        <div className="grid grid-cols-4 gap-2">
           {(
             [
-              { color: 'blue',  label: 'Blue',      active: 'bg-blue-600 hover:bg-blue-500' },
-              { color: 'red',   label: 'Red',       active: 'bg-red-600 hover:bg-red-500' },
-              { color: 'black', label: 'Death',     active: 'bg-gray-900 hover:bg-gray-800 border border-slate-600' },
-              { color: 'beige', label: 'Civilians', active: 'bg-amber-500 hover:bg-amber-400' },
-            ] as { color: CardType['color']; label: string; active: string }[]
-          ).map(({ color, label, active }) => {
+              { color: 'blue',  label: 'Blue',      header: '--BLUE CARDS--',     active: 'bg-blue-600 hover:bg-blue-500' },
+              { color: 'red',   label: 'Red',        header: '--RED CARDS--',      active: 'bg-red-600 hover:bg-red-500' },
+              { color: 'black', label: 'Death',      header: '--DEATH CARD--',     active: 'bg-gray-900 hover:bg-gray-800 border border-slate-600' },
+              { color: 'beige', label: 'Civilians',  header: '--CIVILIAN CARDS--', active: 'bg-amber-500 hover:bg-amber-400' },
+            ] as { color: CardType['color']; label: string; header: string; active: string }[]
+          ).map(({ color, label, header, active }) => {
             const enabled = wordsOf(color).length > 0;
             return (
               <button
                 key={color}
-                onClick={() => addColorToNotes(color)}
+                onClick={() => addColorToNotes(color, header)}
                 disabled={!enabled}
                 title={enabled ? `Add ${label} words to notes` : 'No words set for this color yet'}
                 className={`py-2 px-1 rounded-lg text-xs font-bold tracking-wide transition-all duration-150 text-white ${
@@ -495,6 +497,7 @@ export default function GameBoard({ role }: GameBoardProps) {
               </button>
             );
           })}
+        </div>
         </div>
       )}
 
