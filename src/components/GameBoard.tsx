@@ -218,23 +218,28 @@ export default function GameBoard({ role }: GameBoardProps) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-1 sm:px-4 pt-4">
+    <div className="w-full max-w-4xl mx-auto px-1 sm:px-4 pt-4 pb-8">
 
       {/* Header row: role label + scan buttons */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">You are the {role}</h2>
+        <h2 className="text-xl font-semibold text-white">
+          You are the{' '}
+          <span className={role === 'giver' ? 'text-red-400 font-extrabold' : 'text-blue-400 font-extrabold'}>
+            {role}
+          </span>
+        </h2>
         <div className="flex items-center gap-2">
           {/* Word scan button */}
           <button
             onClick={() => wordInputRef.current?.click()}
             disabled={wordScanLoading || colorScanLoading}
             title="Scan board words from photo"
-            className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 transition-colors"
+            className="p-2 rounded-lg border border-slate-600 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:opacity-50 transition-colors"
             aria-label="Scan board words"
           >
             {wordScanLoading
               ? <span className="block w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              : <Camera size={20} className="text-gray-700" />
+              : <Camera size={20} className="text-slate-300" />
             }
           </button>
 
@@ -244,7 +249,7 @@ export default function GameBoard({ role }: GameBoardProps) {
               onClick={() => colorInputRef.current?.click()}
               disabled={wordScanLoading || colorScanLoading}
               title="Scan color map from photo"
-              className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 transition-colors"
+              className="p-2 rounded-lg border border-slate-600 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:opacity-50 transition-colors"
               aria-label="Scan color map"
             >
               {colorScanLoading
@@ -281,9 +286,9 @@ export default function GameBoard({ role }: GameBoardProps) {
 
       {/* Scan error banner */}
       {scanError && (
-        <div className="mb-3 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center justify-between">
+        <div className="mb-3 px-4 py-2 bg-red-950/50 border border-red-800 rounded-lg text-sm text-red-400 flex items-center justify-between">
           <span>{scanError}</span>
-          <button onClick={() => setScanError(null)} className="ml-2 text-red-400 hover:text-red-600 font-bold text-lg leading-none">&times;</button>
+          <button onClick={() => setScanError(null)} className="ml-2 text-red-500 hover:text-red-300 font-bold text-lg leading-none">&times;</button>
         </div>
       )}
 
@@ -297,11 +302,11 @@ export default function GameBoard({ role }: GameBoardProps) {
               aspect-square rounded-lg border-2 cursor-pointer relative
               flex items-center justify-center text-center
               p-1 sm:p-2
-              ${card.color === 'red' ? 'bg-red-500 hover:bg-red-600' :
-                card.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
-                card.color === 'black' ? 'bg-black hover:bg-gray-900' :
-                card.color === 'beige' ? 'bg-amber-200 hover:bg-amber-300' :
-                'bg-white hover:bg-gray-100'
+              ${card.color === 'red' ? 'bg-red-500 hover:bg-red-600 border-red-600' :
+                card.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600 border-blue-600' :
+                card.color === 'black' ? 'bg-black hover:bg-gray-900 border-gray-800' :
+                card.color === 'beige' ? 'bg-amber-200 hover:bg-amber-300 border-amber-300' :
+                'bg-slate-600 hover:bg-slate-500 border-slate-500'
               }
               transition-colors duration-200
               w-full
@@ -325,7 +330,7 @@ export default function GameBoard({ role }: GameBoardProps) {
             )}
             <span
               className={`w-full text-center font-medium select-none truncate leading-tight
-                ${card.color === 'black' || card.color === 'blue' || card.color === 'red' ? 'text-white' : 'text-black'}
+                ${card.color === 'beige' ? 'text-black' : 'text-white'}
               `}
               style={{
                 fontSize: 'clamp(0.8rem, 4vw, 1.2rem)',
@@ -345,46 +350,46 @@ export default function GameBoard({ role }: GameBoardProps) {
 
       {/* Card Editor Overlay */}
       {selectedCard !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-          <div className="bg-white w-11/12 max-w-sm rounded-xl p-6 shadow-lg relative flex flex-col gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
+          <div className="bg-slate-800 border border-slate-700 w-11/12 max-w-sm rounded-xl p-6 shadow-xl relative flex flex-col gap-4">
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+              className="absolute top-2 right-2 text-slate-500 hover:text-slate-200 text-2xl font-bold"
               onClick={cancelEdit}
               aria-label="Close"
             >
               &times;
             </button>
-            <h3 className="text-lg font-semibold mb-2">Edit Card</h3>
+            <h3 className="text-lg font-semibold mb-2 text-white">Edit Card</h3>
 
-            <label className="block mb-2 text-sm font-medium">Word</label>
+            <label className="block mb-2 text-sm font-medium text-slate-300">Word</label>
             <input
               type="text"
               value={editWord}
               onChange={e => setEditWord(e.target.value)}
-              className="w-full p-2 border rounded focus:outline-none focus:border-blue-500 text-black placeholder-black"
+              className="w-full p-2 border border-slate-600 rounded-lg bg-slate-700 focus:outline-none focus:border-blue-500 text-white placeholder-slate-500"
               maxLength={20}
               autoFocus
               placeholder="Word"
             />
 
-            <label className="block mt-2 mb-1 text-sm font-medium">Color</label>
+            <label className="block mt-2 mb-1 text-sm font-medium text-slate-300">Color</label>
             <div className="flex gap-2 mb-2">
               {(['red', 'blue', 'beige', 'black'] as CardType['color'][]).map(color => (
                 <button
                   key={color}
                   type="button"
                   className={`w-24 h-10 rounded-full border-2 flex items-center justify-center px-4
-                    ${editColor === color ? 'ring-2 ring-blue-500' : ''}
-                    ${color === 'red' ? 'bg-red-500' :
-                      color === 'blue' ? 'bg-blue-500' :
-                      color === 'black' ? 'bg-black' :
-                      'bg-amber-200'}
+                    ${editColor === color ? 'ring-2 ring-blue-400' : ''}
+                    ${color === 'red' ? 'bg-red-500 border-red-600' :
+                      color === 'blue' ? 'bg-blue-500 border-blue-600' :
+                      color === 'black' ? 'bg-black border-slate-600' :
+                      'bg-amber-200 border-amber-300'}
                   `}
                   onClick={() => setEditColor(color)}
                   aria-label={color}
                 >
-                  {color === 'red' && <span className="text-black font-semibold">Red</span>}
-                  {color === 'blue' && <span className="text-black font-semibold">Blue</span>}
+                  {color === 'red' && <span className="text-white font-semibold">Red</span>}
+                  {color === 'blue' && <span className="text-white font-semibold">Blue</span>}
                   {color === 'beige' && <span className="text-black font-semibold">Civilian</span>}
                   {color === 'black' && <span className="text-white font-semibold">Death</span>}
                 </button>
@@ -397,7 +402,7 @@ export default function GameBoard({ role }: GameBoardProps) {
                 type="button"
                 onClick={() => setEditGuessed(g => !g)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
-                  ${editGuessed ? 'bg-gray-500' : 'bg-gray-200'}`}
+                  ${editGuessed ? 'bg-slate-400' : 'bg-slate-700'}`}
                 aria-label="Toggle guessed"
               >
                 <span
@@ -405,7 +410,7 @@ export default function GameBoard({ role }: GameBoardProps) {
                     ${editGuessed ? 'translate-x-6' : 'translate-x-1'}`}
                 />
               </button>
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-slate-300">
                 {editGuessed ? 'Marked as guessed' : 'Mark as guessed'}
               </span>
             </div>
@@ -422,15 +427,15 @@ export default function GameBoard({ role }: GameBoardProps) {
 
       {/* Word Scan Confirmation Modal */}
       {wordScanResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4">
-          <div className="bg-white w-full max-w-sm rounded-xl p-5 shadow-lg flex flex-col gap-4">
-            <h3 className="text-lg font-semibold">Detected Words</h3>
-            <p className="text-sm text-gray-500">Review the words below. Tap Confirm to apply them to the board.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
+          <div className="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-xl p-5 shadow-xl flex flex-col gap-4">
+            <h3 className="text-lg font-semibold text-white">Detected Words</h3>
+            <p className="text-sm text-slate-400">Review the words below. Tap Confirm to apply them to the board.</p>
             <div className="grid grid-cols-5 gap-1">
               {wordScanResult.map((word, i) => (
                 <div
                   key={i}
-                  className="bg-gray-100 rounded text-center text-xs font-medium py-1 px-0.5 truncate text-black"
+                  className="bg-slate-700 rounded text-center text-xs font-medium py-1 px-0.5 truncate text-slate-200"
                   title={word}
                 >
                   {word}
@@ -440,7 +445,7 @@ export default function GameBoard({ role }: GameBoardProps) {
             <div className="flex gap-3 mt-1">
               <button
                 onClick={() => setWordScanResult(null)}
-                className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg hover:bg-gray-50 transition"
+                className="flex-1 border border-slate-600 text-slate-400 py-2 rounded-lg hover:bg-slate-700 transition"
               >
                 Cancel
               </button>
@@ -461,7 +466,7 @@ export default function GameBoard({ role }: GameBoardProps) {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Write your clues and notes here..."
-          className="w-full h-32 p-3 border-2 rounded-lg focus:outline-none focus:border-blue-500 resize-none text-black"
+          className="w-full h-32 p-3 border-2 border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 resize-none text-white bg-slate-800 placeholder-slate-600"
         />
       </div>
 
@@ -477,25 +482,25 @@ export default function GameBoard({ role }: GameBoardProps) {
         )}
         {timerState === 'running' && (
           <>
-            <div className="text-3xl font-mono mb-2">{formatTime(timeLeft)}</div>
+            <div className="text-3xl font-mono mb-2 text-white">{formatTime(timeLeft)}</div>
             <div className="flex gap-2">
-              <button className="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600" onClick={pauseTimer}>Pause</button>
-              <button className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400" onClick={cancelTimer}>Cancel</button>
+              <button className="bg-amber-500 text-white px-4 py-1 rounded hover:bg-amber-600" onClick={pauseTimer}>Pause</button>
+              <button className="bg-slate-700 text-slate-200 px-4 py-1 rounded hover:bg-slate-600" onClick={cancelTimer}>Cancel</button>
             </div>
           </>
         )}
         {timerState === 'paused' && (
           <>
-            <div className="text-3xl font-mono mb-2">{formatTime(timeLeft)}</div>
+            <div className="text-3xl font-mono mb-2 text-white">{formatTime(timeLeft)}</div>
             <div className="flex gap-2">
               <button className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700" onClick={resumeTimer}>Resume</button>
-              <button className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400" onClick={cancelTimer}>Cancel</button>
+              <button className="bg-slate-700 text-slate-200 px-4 py-1 rounded hover:bg-slate-600" onClick={cancelTimer}>Cancel</button>
             </div>
           </>
         )}
         {timerState === 'done' && (
           <div className="flex flex-col items-center gap-2">
-            <div className="text-2xl font-bold text-red-600">Time&apos;s Up!</div>
+            <div className="text-2xl font-bold text-red-400">Time&apos;s Up!</div>
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
               onClick={resetTimer}
@@ -510,13 +515,13 @@ export default function GameBoard({ role }: GameBoardProps) {
       <div className="mt-6 flex justify-between items-center mb-4">
         <button
           onClick={resetBoard}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-semibold"
         >
           New Game
         </button>
         <button
           onClick={handleShare}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold"
         >
           Share Board
         </button>
@@ -524,32 +529,32 @@ export default function GameBoard({ role }: GameBoardProps) {
 
       {/* Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
-            <h2 className="text-xl font-bold mb-4 text-black">Share Board</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
+            <h2 className="text-xl font-bold mb-4 text-white">Share Board</h2>
 
             {shareLoading ? (
-              <div className="text-center text-gray-500 py-4">Generating code...</div>
+              <div className="text-center text-slate-400 py-4">Generating code...</div>
             ) : (
               <>
-                <p className="text-sm text-gray-500 mb-2">Board Code</p>
-                <div className="bg-gray-100 rounded-lg p-4 text-center mb-3">
-                  <span className="text-4xl font-mono font-bold tracking-widest text-black">{shareCode}</span>
+                <p className="text-sm text-slate-400 mb-2">Board Code</p>
+                <div className="bg-slate-700 rounded-xl p-4 text-center mb-3">
+                  <span className="text-4xl font-mono font-bold tracking-widest text-white">{shareCode}</span>
                 </div>
                 <button
                   onClick={copyCode}
-                  className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition mb-4"
+                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-500 transition mb-4"
                 >
                   Copy Code
                 </button>
 
-                <p className="text-sm text-gray-500 mb-2">Or share full link</p>
-                <p className="text-xs text-gray-400 break-all mb-2">
+                <p className="text-sm text-slate-400 mb-2">Or share full link</p>
+                <p className="text-xs text-slate-500 break-all mb-2">
                   {typeof window !== 'undefined' ? `${window.location.origin}?board=${shareCode}&role=${role}` : ''}
                 </p>
                 <button
                   onClick={copyLink}
-                  className="w-full bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition mb-4"
+                  className="w-full bg-slate-700 text-slate-300 py-2 rounded-lg hover:bg-slate-600 transition mb-4"
                 >
                   Copy Link
                 </button>
@@ -558,7 +563,7 @@ export default function GameBoard({ role }: GameBoardProps) {
 
             <button
               onClick={() => { setShowShareModal(false); setShareCode(''); }}
-              className="w-full border border-gray-300 text-gray-600 py-2 rounded hover:bg-gray-50 transition"
+              className="w-full border border-slate-700 text-slate-500 py-2 rounded-lg hover:bg-slate-700 transition"
             >
               Close
             </button>
