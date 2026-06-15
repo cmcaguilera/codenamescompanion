@@ -7,6 +7,7 @@ import { CardType } from '@/lib/contexts/GameBoardContext';
 
 interface GameBoardProps {
   role: 'giver' | 'guesser';
+  onNewGame: () => void;
 }
 
 // Resize to max 1024px and convert to JPEG to keep payloads small and avoid format issues.
@@ -60,7 +61,7 @@ async function callVisionApi(
   return json.data as string[];
 }
 
-export default function GameBoard({ role }: GameBoardProps) {
+export default function GameBoard({ role, onNewGame }: GameBoardProps) {
   const { cards, setCards, notes, setNotes, resetBoard, generateShareCode } = useGameBoard();
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [editWord, setEditWord] = useState('');
@@ -555,7 +556,7 @@ export default function GameBoard({ role }: GameBoardProps) {
       {/* Action Buttons */}
       <div className="mt-6 flex justify-between items-center mb-4">
         <button
-          onClick={resetBoard}
+          onClick={() => { resetBoard(); onNewGame(); }}
           className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-semibold"
         >
           New Game

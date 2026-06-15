@@ -43,6 +43,11 @@ export default function Home() {
     setStep('role')
   }
 
+  const handleNewGame = () => {
+    setRole(null)
+    setStep('role')
+  }
+
   if (step === 'role') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -82,7 +87,7 @@ export default function Home() {
 
   return (
     <GameBoardProvider>
-      <GameBoard role={role!} />
+      <GameBoard role={role!} onNewGame={handleNewGame} />
     </GameBoardProvider>
   )
 }
