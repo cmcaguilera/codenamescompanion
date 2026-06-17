@@ -406,6 +406,21 @@ export default function GameBoard({ role, onNewGame }: GameBoardProps) {
               ))}
             </div>
 
+            {/* Clear color — reset card back to its default (no color) state */}
+            <button
+              type="button"
+              onClick={() => setEditColor('white')}
+              disabled={editColor === 'white'}
+              className={`w-full h-10 rounded-full border-2 flex items-center justify-center px-4 transition
+                ${editColor === 'white'
+                  ? 'bg-slate-600 border-slate-500 ring-2 ring-blue-400 cursor-default'
+                  : 'bg-slate-700 border-slate-600 hover:bg-slate-600'}
+              `}
+              aria-label="No color (default)"
+            >
+              <span className="text-slate-200 font-semibold">No Color (Default)</span>
+            </button>
+
             {/* Guessed toggle */}
             <div className="flex items-center gap-3 mt-1">
               <button
